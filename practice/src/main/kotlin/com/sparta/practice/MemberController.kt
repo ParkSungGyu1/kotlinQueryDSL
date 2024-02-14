@@ -1,7 +1,9 @@
 package com.sparta.practice
 
 import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.Predicate
 import com.querydsl.core.types.dsl.BooleanExpression
+import com.querydsl.core.util.StringUtils
 import jakarta.transaction.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -10,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController
 class MemberController :  QueryDslSupport()  {
 
     private val mem = QMember.member
-
+    private val team = QTeam.team
 
     //BooleanBuilder 사용
     @GetMapping("/practice1")
@@ -90,12 +92,95 @@ class MemberController :  QueryDslSupport()  {
     )*/
 
 
+    /**
+     * 동적쿼리와 성능 최적화 : BooleanBuilder
+     */
+    @GetMapping("/practice3")
+    fun practice3() : List<MemberTeamDto>{
+        val condition = MemberSearchCondition("", "", 5,10)
+        val builder = BooleanBuilder()
+
+        if (!StringUtils.isNullOrEmpty(condition.userName)){
+            builder.and(mem.userName.eq(condition.userName))
+        }
+        if (!StringUtils.isNullOrEmpty(condition.teamName)){
+            builder.and(team.teamName.eq(condition.teamName))
+        }
+        if (condition.ageGoe != null){
+            builder.and(mem.age.goe(condition.ageGoe))
+        }
+        if (condition.ageLoe != null){
+            builder.and(mem.age.loe(condition.ageLoe))
+        }
+
+        return queryFactory
+            .select(QMemberTeamDto(
+                mem.id,
+                mem.userName,
+                mem.age,
+                team.id,
+                team.teamName
+            ))
+            .from(mem)
+            .leftJoin(mem.team, team)
+            .where(builder)
+            .fetch()
+    }
+
+    /**
+     * 동적쿼리와 성능 최적화 : BooleanExpression
+     */
+    @GetMapping("/practice4")
+    fun practice4() : List<MemberTeamDto>{
+        val condition = MemberSearchCondition("", "", 5,15)
 
 
+        return queryFactory
+            .select(QMemberTeamDto(
+                mem.id,
+                mem.userName,
+                mem.age,
+                team.id,
+                team.teamName
+            ))
+            .from(mem)
+            .leftJoin(mem.team, team)
+            .where(
+                userNameEq2(condition.userName),
+                teamNameEq(condition.teamName),
+                ageGoe(condition.ageGoe),
+                ageLoe(condition.ageLoe)
+            )
+            .fetch()
+    }
 
+    private fun userNameEq2(userName: String?): BooleanExpression? {
+        if(StringUtils.isNullOrEmpty(userName)){
+            return null
+        }
+        return mem.userName.eq(userName)
+    }
 
+    private fun teamNameEq(teamName: String?): BooleanExpression? {
+        if(StringUtils.isNullOrEmpty(teamName)){
+            return null
+        }
+        return team.teamName.eq(teamName)
+    }
 
+    private fun ageLoe(ageLoe: Int?): BooleanExpression? {
+        if(ageLoe == null){
+            return null
+        }
+        return mem.age.loe(ageLoe)
+    }
 
+    private fun ageGoe(ageGoe: Int?): BooleanExpression? {
+        if(ageGoe == null){
+            return null
+        }
+        return mem.age.goe(ageGoe)
+    }
 
 
 }
