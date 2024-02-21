@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-class MemberController :  QueryDslSupport()  {
+class MemberController(
+    private val memberRepository: MemberRepository
+) :  QueryDslSupport()  {
 
     private val mem = QMember.member
     private val team = QTeam.team
@@ -152,6 +154,14 @@ class MemberController :  QueryDslSupport()  {
                 ageLoe(condition.ageLoe)
             )
             .fetch()
+    }
+
+    @GetMapping("/practice5")
+    fun practice5() : List<MemberTeamDto>{
+
+        val condition = MemberSearchCondition("", "", 5,15)
+
+        return memberRepository.search(condition)
     }
 
     private fun userNameEq2(userName: String?): BooleanExpression? {
